@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FastML — Prepare parameters</title>
+  <style>
+    body{font:16px/1.5 system-ui,Arial,sans-serif;max-width:850px;margin:2rem auto;padding:0 1rem;color:#243243}
+    h1{color:#174c7d}fieldset{border:1px solid #b9c9d7;border-radius:8px;margin:1rem 0;padding:1rem}
+    legend{font-weight:700}label{display:block;margin:.6rem 0}input,textarea,select,button{font:inherit}
+    textarea{width:100%;box-sizing:border-box}input[type=file]{max-width:100%}
+    button{padding:.65rem 1.1rem;background:#136ca5;border:0;border-radius:5px;color:white;cursor:pointer}
+    button:hover{background:#0a517f}.hint{color:#536a7f;font-size:.9rem}.error{color:#ab2020;white-space:pre-wrap}
+    .row{display:flex;flex-wrap:wrap;gap:1rem;align-items:center}.row label{margin:.25rem 0}
+  </style>
+</head>
+<body>
+  <h1>FastML</h1>
+  <p>Prepare native parameters for the planned browser/WASM version. No calculation is run yet.</p>
+  <form id="fastml-form">
+    <fieldset><legend>Input</legend>
+      <label>FASTA sequences (paste text)<textarea id="msa-text" rows="5" placeholder=">seq1&#10;ACGT..."></textarea></label>
+      <label>Or upload FASTA file <input id="msa-file" type="file" accept=".fa,.fas,.fasta,.txt"></label>
+      <div class="row"><label><input type="radio" name="aligned" value="aligned" checked> Already aligned</label>
+        <label><input type="radio" name="aligned" value="not-aligned"> Not aligned</label></div>
+      <label>Newick tree (paste text)<textarea id="tree-text" rows="3" placeholder="(seq1:0.1,seq2:0.2);"></textarea></label>
+      <label>Or upload tree file <input id="tree-file" type="file" accept=".nwk,.tree,.tre,.txt"></label>
+      <p class="hint">Pasted text takes precedence over an uploaded file. Files remain on your computer at this stage.</p>
+    </fieldset>
+    <fieldset><legend>Model</legend>
+      <div class="row"><label>Sequence type <select id="seq-type">
+        <option value="aa">Amino acids</option><option value="nuc">Nucleotides</option><option value="codon">Codons</option>
+      </select></label>
+      <label>Substitution model <select id="model"></select></label></div>
+      <p class="hint">Only models recognized by the supplied Python wrapper are listed. MIX requires a separate weights-generation step.</p>
+    </fieldset>
+    <fieldset><legend>Advanced options</legend>
+      <label><input id="branch" type="checkbox" checked> Optimize branch lengths</label>
+      <label><input id="gamma" type="checkbox" checked> Use gamma distribution</label>
+      <div id="gamma-options" class="row"><label><input type="radio" name="alpha-mode" value="optimize" checked> Optimize alpha</label>
+        <label><input type="radio" name="alpha-mode" value="user"> Provide alpha</label>
+        <label>Alpha value <input id="alpha-value" type="number" min="0.000001" step="any" placeholder="e.g. 0.5" disabled></label></div>
+      <label><input id="joint" type="checkbox" checked> Compute joint reconstruction</label>
+      <label>Job title (optional) <input id="job-title" type="text" maxlength="100"></label>
+    </fieldset>
+    <button type="submit">Prepare parameters</button>
+    <p id="error" class="error" role="alert"></p>
+  </form>
+  <script src="prepare-fastml.js"></script>
+  <script>
+    (() => {
+      'use strict';
+      const $ = id => document.getElementById(id);
+      const models = {
+        aa: [['JTT','JTT'],['LG','LG'],['cpREV','cpREV'],['WAG','WAG'],['Dayhoff','Dayhoff'],['MIX','MIX']],
+        nuc: [['JC_Nuc','JC69'],['T92','T92'],['HKY','HKY85']],
+        codon: [['yang','Yang'],['empiriCodon','Empirical codon']]
+      };
+      function updateModels() {
+        $('model').replaceChildren(...models[$('seq-type').value].map(([value,label]) => new Option(label,value)));
+      }
+      function updateGamma() {
+        const enabled = $('gamma').checked;
+        $('gamma-options').hidden = !enabled;
+        $('alpha-value').disabled = !enabled || document.querySelector('[name="alpha-mode"]:checked').value !== 'user';
+      }
+      $('seq-type').addEventListener('change',updateModels);
+      $('gamma').addEventListener('change',updateGamma);
+      document.querySelectorAll('[name="alpha-mode"]').forEach(x => x.addEventListener('change',updateGamma));
+      updateModels();updateGamma();
+
+      async function getInput(textId, fileId, label) {
+        const pasted = $(textId).value.trim();
+        const file = $(fileId).files[0];
+        const result = pasted || (file ? await file.text() : '');
+        if (!result.trim()) throw new Error(`Please provide ${label}.`);
+        return result;
+      }
+
+      $('fastml-form').addEventListener('submit',async event => {
+        event.preventDefault(); $('error').textContent = '';
+        try {
+          // Read inputs now for future WASM integration; store only metadata/params in sessionStorage.
+          const msa = await getInput('msa-text','msa-file','FASTA sequences');
+          const tree = await getInput('tree-text','tree-file','a Newick tree');
+          if (!/^\s*>/m.test(msa)) throw new Error('Sequence input must be in FASTA format.');
+          if (!tree.trim().endsWith(';')) throw new Error('Newick tree must end with a semicolon (;).');
+          const alphaMode = document.querySelector('[name="alpha-mode"]:checked').value;
+          const alpha = alphaMode === 'optimize' ? 'optimize' : $('alpha-value').value.trim();
+          if ($('gamma').checked && alphaMode === 'user' && !(Number(alpha) > 0)) {
+            throw new Error('Please provide a positive alpha value.');
+          }
+          const model = $('model').value;
+          if (model === 'MIX') throw new Error('MIX needs a model weights file, which is not implemented yet.');
+          const aligned = document.querySelector('[name="aligned"]:checked').value;
+          const fields = {
+            msa:'/input/data.fas',tree:'/input/tree.txt',model,isAligned:aligned,
+            joint:$('joint').checked?'on':'off',branch:$('branch').checked?'on':'off',
+            gamma:$('gamma').checked?'on':'off',alpha,treeMethod:'',structure:'',PDB:'',chain:'',
+            job_title:$('job-title').value.trim()
+          };
+          const preParam = Object.entries(fields).filter(([,value]) => value !== '').map(([key,value]) => `${key} ${value}`).join('\n')+'\n';
+          const nativeParam = FastMLPrepare.prepareFastMLParams(preParam, {workDir:'/results'});
+          sessionStorage.setItem('fastml-parameters', JSON.stringify({preParam,nativeParam,jobTitle:fields.job_title,aligned}));
+          location.href = 'output.html';
+        } catch(error) { $('error').textContent = error.message; }
+      });
+    })();
+  </script>
+</body>
+</html>

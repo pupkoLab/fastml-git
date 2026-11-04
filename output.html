@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FastML — Prepared parameters</title>
+  <style>
+    body{font:16px/1.5 system-ui,Arial,sans-serif;max-width:850px;margin:2rem auto;padding:0 1rem;color:#243243}
+    h1{color:#174c7d}pre{background:#eef3f7;border:1px solid #c8d6e0;border-radius:6px;padding:1rem;overflow:auto}
+    a.download{display:inline-block;margin:.4rem .6rem .4rem 0;background:#136ca5;color:white;padding:.6rem 1rem;text-decoration:none;border-radius:5px}
+    .note{background:#fff8e6;border-left:4px solid #d6a024;padding:.8rem 1rem}
+  </style>
+</head>
+<body>
+  <h1>FastML — Parameter files</h1>
+  <p id="status">Loading prepared files…</p>
+  <div id="results" hidden>
+    <p><a id="download-pre" class="download" download="pre.param">Download pre.param</a>
+       <a id="download-native" class="download" download="param.file">Download param.file</a></p>
+    <h2>pre.param</h2><pre id="pre-preview"></pre>
+    <h2>param.file</h2><pre id="native-preview"></pre>
+    <p class="note">These are parameter files only. FastML and unroot have not been executed. The native file refers to virtual paths that will be created by the future WASM pipeline. If sequences were unaligned, alignment is also still required.</p>
+  </div>
+  <p><a href="index.html">Back to input form</a></p>
+  <script>
+    (() => {
+      const raw = sessionStorage.getItem('fastml-parameters');
+      if (!raw) {
+        document.getElementById('status').textContent = 'No prepared parameters in this browser tab. Return to the input form first.';
+        return;
+      }
+      let result;
+      try { result = JSON.parse(raw); } catch { document.getElementById('status').textContent = 'Saved parameters could not be read.'; return; }
+      const urls = [];
+      for (const [id,content] of [['pre',result.preParam],['native',result.nativeParam]]) {
+        document.getElementById(`${id}-preview`).textContent = content;
+        const url = URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));
+        urls.push(url);
+        document.getElementById(`download-${id}`).href = url;
+      }
+      window.addEventListener('pagehide',() => urls.forEach(url => URL.revokeObjectURL(url)),{once:true});
+      document.getElementById('status').textContent = result.jobTitle ? `Job: ${result.jobTitle} — parameters prepared.` : 'Parameters prepared.';
+      document.getElementById('results').hidden = false;
+    })();
+  </script>
+</body>
+</html>

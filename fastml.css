@@ -1,0 +1,85 @@
+<STYLE TYPE='text/css' MEDIA=screen>
+
+#notes  {
+        color: "red"; 
+        font-weight : 600;
+        font-size : 24px;
+        text-align : center; 
+        } 
+#form  { font-weight : 600; font-size : 16px;} 
+
+#table_form {
+	font-weight : 600; 
+	font-size : 16px;
+	} 
+
+
+#title {
+	font-family : Times New Roman;
+	font-weight : extra-bold;
+	font-size : 16px;
+	font-variant : normal;
+	line-height : normal;
+	text-decoration : none;
+	color: white;
+	text-align : left;
+}
+
+#table_form {
+
+	border-right: solid;				
+	border-width:	5;				
+	border-left: none;  			
+	border-right-width: thick; 				
+	border-color: #400080;		
+}
+
+#MSA_PROGRAM_HoT,#CodonsTable{display: none;}
+
+
+.side_bar_links	a:link {text-decoration: none; color: white;}
+.side_bar_links a:visited {text-decoration: none; color: white;}
+.side_bar_links a:active {text-decoration: none}
+.side_bar_links a:hover {text-decoration: none; color: white;}
+
+
+.title_menu a:link {text-decoration: none;font-weight:600;color:#0033FF;}
+.title_menu a:visited {text-decoration: none;font-weight:600;color:#0033FF;}
+.title_menu A:active {text-decoration: none;font-weight:600;color:#0033FF;}
+.title_menu A:hover {text-decoration: underline;font-weight:bold;color:#0033FF;}
+
+#bottom_links{ 	    
+    width: 100%;
+    margin-left: 1%;
+	color: rgb(156,80,103); 
+	background-color: white; 
+	text-align: center; 
+	font-size: 90%;
+	}
+/* bottom links */
+
+.bottom_link a:link {text-decoration: none; color: rgb(156,80,103); }
+.bottom_link a:visited {text-decoration: none; color: rgb(156,80,103); }
+.bottom_link A:active {text-decoration: none}
+.bottom_link A:hover {text-decoration: underline overline; color: rgb(156,80,103); }
+
+#PrintOutH {
+	color:#000000; 
+	font-weight:bold; 
+	font-family:"Comic Sans MS"; 
+	font-size:20
+}
+#PrintOutH_3 {
+	color:#000000; 
+	font-weight:bold; 
+	text-decoration:underline;
+	text-indent:20px;
+	font-family:"Comic Sans MS"; 
+	font-size:16
+}
+#CodonsSubMatrix,#NucSubMatrix,#useGammaOptions{display: none;}
+#container{position: relative; left:0.5%;width:75%;}
+
+#helpQueue
+{margin: 0px 20px 0px 20px;  display: none; border: thin solid rgb(53,140,183); font-size: 80%; color: rgb(53,140,183); padding: 1%;  width: 60%; background:rgb(236,252,255)}
+</STYLE>

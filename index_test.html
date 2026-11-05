@@ -16,7 +16,7 @@
 </head>
 <body>
   <h1>FastML</h1>
-  <p>Prepare native parameters for the planned browser/WASM version. No calculation is run yet.</p>
+  <p>Unroot your phylogenetic tree in the browser using WebAssembly and prepare the native FastML parameter file. FastML itself is not run yet.</p>
   <form id="fastml-form">
     <fieldset><legend>Input</legend>
       <label>FASTA sequences (paste text)<textarea id="msa-text" rows="5" placeholder=">seq1&#10;ACGT..."></textarea></label>
@@ -43,10 +43,12 @@
       <label><input id="joint" type="checkbox" checked> Compute joint reconstruction</label>
       <label>Job title (optional) <input id="job-title" type="text" maxlength="100"></label>
     </fieldset>
-    <button type="submit">Prepare parameters</button>
+    <button id="submit-button" type="submit">Unroot tree and prepare parameters</button>
+    <p id="progress" class="hint" role="status"></p>
     <p id="error" class="error" role="alert"></p>
   </form>
   <script src="prepare-fastml.js"></script>
+  <script src="tree_unroot.js"></script>
   <script>
     (() => {
       'use strict';
@@ -77,10 +79,26 @@
         return result;
       }
 
+      async function unrootTree(newick, msa) {
+        if (typeof createTreeUnrootModule !== 'function') {
+          throw new Error('tree_unroot.js did not load. Add tree_unroot.js and tree_unroot.wasm to the repository root.');
+        }
+        const mod = await createTreeUnrootModule();
+        mod.FS.mkdir('/input');
+        mod.FS.mkdir('/results');
+        mod.FS.writeFile('/input/tree.txt', newick);
+        mod.FS.writeFile('/input/data.fas', msa);
+        mod.callMain(['/input/tree.txt','/results/unrooted_tree.txt']);
+        const unrooted = mod.FS.readFile('/results/unrooted_tree.txt',{encoding:'utf8'});
+        if (!unrooted.trim()) throw new Error('Tree unrooting produced an empty file.');
+        return unrooted;
+      }
+
       $('fastml-form').addEventListener('submit',async event => {
         event.preventDefault(); $('error').textContent = '';
+        $('submit-button').disabled = true;
+        $('progress').textContent = 'Reading inputs…';
         try {
-          // Read inputs now for future WASM integration; store only metadata/params in sessionStorage.
           const msa = await getInput('msa-text','msa-file','FASTA sequences');
           const tree = await getInput('tree-text','tree-file','a Newick tree');
           if (!/^\s*>/m.test(msa)) throw new Error('Sequence input must be in FASTA format.');
@@ -92,6 +110,8 @@
           }
           const model = $('model').value;
           if (model === 'MIX') throw new Error('MIX needs a model weights file, which is not implemented yet.');
+          $('progress').textContent = 'Loading WASM and unrooting the tree…';
+          const unrootedTree = await unrootTree(tree, msa);
           const aligned = document.querySelector('[name="aligned"]:checked').value;
           const fields = {
             msa:'/input/data.fas',tree:'/input/tree.txt',model,isAligned:aligned,
@@ -101,9 +121,11 @@
           };
           const preParam = Object.entries(fields).filter(([,value]) => value !== '').map(([key,value]) => `${key} ${value}`).join('\n')+'\n';
           const nativeParam = FastMLPrepare.prepareFastMLParams(preParam, {workDir:'/results'});
-          sessionStorage.setItem('fastml-parameters', JSON.stringify({preParam,nativeParam,jobTitle:fields.job_title,aligned}));
+          $('progress').textContent = 'Preparing output files…';
+          sessionStorage.setItem('fastml-parameters', JSON.stringify({preParam,nativeParam,unrootedTree,jobTitle:fields.job_title,aligned}));
           location.href = 'output.html';
-        } catch(error) { $('error').textContent = error.message; }
+        } catch(error) { $('error').textContent = error.message; $('progress').textContent = ''; }
+        finally { $('submit-button').disabled = false; }
       });
     })();
   </script>

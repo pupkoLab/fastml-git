@@ -15,10 +15,12 @@
   <p id="status">Loading prepared files…</p>
   <div id="results" hidden>
     <p><a id="download-pre" class="download" download="pre.param">Download pre.param</a>
-       <a id="download-native" class="download" download="param.file">Download param.file</a></p>
+       <a id="download-native" class="download" download="param.file">Download param.file</a>
+       <a id="download-tree" class="download" download="unrooted_tree.txt">Download unrooted tree</a></p>
     <h2>pre.param</h2><pre id="pre-preview"></pre>
     <h2>param.file</h2><pre id="native-preview"></pre>
-    <p class="note">These are parameter files only. FastML and unroot have not been executed. The native file refers to virtual paths that will be created by the future WASM pipeline. If sequences were unaligned, alignment is also still required.</p>
+    <h2>Unrooted tree</h2><pre id="tree-preview"></pre>
+    <p class="note">The tree has been unrooted using WebAssembly. FastML has not been executed. Native parameter paths refer to the virtual filesystem for the upcoming FastML WASM pipeline. If sequences were unaligned, alignment is still required.</p>
   </div>
   <p><a href="index.html">Back to input form</a></p>
   <script>
@@ -31,7 +33,11 @@
       let result;
       try { result = JSON.parse(raw); } catch { document.getElementById('status').textContent = 'Saved parameters could not be read.'; return; }
       const urls = [];
-      for (const [id,content] of [['pre',result.preParam],['native',result.nativeParam]]) {
+      if (typeof result.unrootedTree !== 'string') {
+        document.getElementById('status').textContent = 'Missing unrooted tree. Please submit the input form again.';
+        return;
+      }
+      for (const [id,content] of [['pre',result.preParam],['native',result.nativeParam],['tree',result.unrootedTree]]) {
         document.getElementById(`${id}-preview`).textContent = content;
         const url = URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));
         urls.push(url);

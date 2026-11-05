@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>FastML — Prepare parameters</title>
+  <title>FastML — Run in browser</title>
   <style>
     body{font:16px/1.5 system-ui,Arial,sans-serif;max-width:850px;margin:2rem auto;padding:0 1rem;color:#243243}
     h1{color:#174c7d}fieldset{border:1px solid #b9c9d7;border-radius:8px;margin:1rem 0;padding:1rem}
@@ -47,12 +47,7 @@
     <p id="progress" class="hint" role="status"></p>
     <p id="error" class="error" role="alert"></p>
   </form>
-  <script src="prepare-fastml.js"></script>
-  <script src="tree_unroot.js"></script>
-  <script src="fastml.js"></script>
   <script src="fastml-store.js"></script>
-  <script src="indelCoder.js"></script>
-  <script src="fastml-indels.js"></script>
   <script>
     (() => {
       'use strict';
@@ -83,90 +78,6 @@
         return result;
       }
 
-      async function unrootTree(newick, msa) {
-        if (typeof createTreeUnrootModule !== 'function') {
-          throw new Error('tree_unroot.js did not load. Add tree_unroot.js and tree_unroot.wasm to the repository root.');
-        }
-        const mod = await createTreeUnrootModule();
-        mod.FS.mkdir('/input');
-        mod.FS.mkdir('/results');
-        mod.FS.writeFile('/input/tree.txt', newick);
-        mod.FS.writeFile('/input/data.fas', msa);
-        mod.callMain(['/input/tree.txt','/results/unrooted_tree.txt']);
-        const unrooted = mod.FS.readFile('/results/unrooted_tree.txt',{encoding:'utf8'});
-        if (!unrooted.trim()) throw new Error('Tree unrooting produced an empty file.');
-        return unrooted;
-      }
-
-      async function runFastML(msa, unrootedTree, nativeParam, joint) {
-        if (typeof createFastMLModule !== 'function') {
-          throw new Error('fastml.js did not load. Add fastml.js and fastml.wasm to the repository root.');
-        }
-        const mod = await createFastMLModule();
-        mod.FS.mkdir('/input');
-        mod.FS.mkdir('/results');
-        mod.FS.writeFile('/input/data.fas',msa);
-        mod.FS.writeFile('/results/unrooted_tree.txt',unrootedTree);
-        mod.FS.writeFile('/results/param.file',nativeParam);
-        mod.callMain(['/results/param.file']);
-        const names = [
-          'outTreeFileNewick','outTreeFileAncestor','outFile_prob_marginal',
-          'outFile_seq_marginal','reportFile'
-        ];
-        if (joint) names.push('outFile_prob_joint','outFile_seq_joint');
-        const outputs = {};
-        for (const name of names) {
-          try { outputs[`${name}.txt`] = mod.FS.readFile(`/results/${name}.txt`,{encoding:'utf8'}); }
-          catch { /* Optional output missing; required outputs checked below. */ }
-        }
-        if (!outputs['outTreeFileNewick.txt'] || !outputs['outFile_seq_marginal.txt']) {
-          throw new Error('FastML did not produce its expected tree and marginal sequence outputs. Check the browser console.');
-        }
-        return outputs;
-      }
-
-      async function processAndCombineIndels(msa, outputs, joint) {
-        if (!msa.includes('-')) return {skipped:true};
-        if (typeof createIndelCoderModule !== 'function') {
-          throw new Error('indelCoder.js did not load. Add indelCoder.js and indelCoder.wasm to the repository root.');
-        }
-        const mod = await createIndelCoderModule();
-        mod.FS.mkdir('/input');
-        mod.FS.mkdir('/results');
-        mod.FS.writeFile('/input/data.fas',msa);
-        const paramLines = [
-          '_seqFile /input/data.fas',
-          '_indelOutputInfoFile /results/indelCoder.report',
-          '_indelOutputFastaFile /results/indelCoder.fasta',
-          '_nexusFileName /results/indel.nexus',
-          '_logFile /results/indelcoder.log',
-          '_logValue 9',
-          '_codingType SIC',
-          '_isOmitLeadingAndEndingGaps 0'
-        ];
-        outputs['indelcoder.param'] = paramLines.join('\n')+'\n';
-        mod.FS.writeFile('/results/indelcoder.param',outputs['indelcoder.param']);
-        mod.callMain(['/results/indelcoder.param']);
-        for(const name of ['indelCoder.report','indelCoder.fasta','indel.nexus','indelcoder.log']) {
-          try { outputs[name] = mod.FS.readFile(`/results/${name}`,{encoding:'utf8'}); }
-          catch {throw new Error(`indelCoder did not generate ${name}`);}
-        }
-        const inferred = FastMLIndels.inferIndels(
-          outputs['outTreeFileNewick.txt'],outputs['indelCoder.fasta']);
-        outputs['indel_likelihood'] = inferred.report;
-        const names=['outFile_seq_marginal'];
-        if(joint)names.push('outFile_seq_joint');
-        for(const name of names) {
-          const filename=`${name}.txt`;
-          const original=outputs[filename];
-          if(typeof original!=='string')throw new Error(`Missing FastML sequence output: ${filename}`);
-          const combined=FastMLIndels.combineResults(inferred,outputs['indel.nexus'],original);
-          outputs[`${name}_no_indel.txt`]=original;
-          outputs[filename]=combined;
-        }
-        return {skipped:false,bestRate:inferred.bestRate};
-      }
-
       $('fastml-form').addEventListener('submit',async event => {
         event.preventDefault(); $('error').textContent = '';
         $('submit-button').disabled = true;
@@ -186,8 +97,6 @@
           if (document.querySelector('[name="aligned"]:checked').value !== 'aligned') {
             throw new Error('Unaligned sequences require MAFFT, which is not integrated yet. Please provide an aligned MSA.');
           }
-          $('progress').textContent = 'Loading WASM and unrooting the tree…';
-          const unrootedTree = await unrootTree(tree, msa);
           const aligned = document.querySelector('[name="aligned"]:checked').value;
           const fields = {
             msa:'/input/data.fas',tree:'/input/tree.txt',model,isAligned:aligned,
@@ -196,16 +105,13 @@
             job_title:$('job-title').value.trim()
           };
           const preParam = Object.entries(fields).filter(([,value]) => value !== '').map(([key,value]) => `${key} ${value}`).join('\n')+'\n';
-          const nativeParam = FastMLPrepare.prepareFastMLParams(preParam, {workDir:'/results'});
-          $('progress').textContent = 'Running FastML WASM (this may take a while)…';
-          await new Promise(resolve => setTimeout(resolve,50));
-          const outputs = await runFastML(msa,unrootedTree,nativeParam,$('joint').checked);
-          $('progress').textContent = 'Coding, inferring and merging ancestral indels…';
-          await new Promise(resolve => setTimeout(resolve,50));
-          const indels = await processAndCombineIndels(msa,outputs,$('joint').checked);
-          $('progress').textContent = 'Saving results in this browser…';
           const jobId = (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-          await FastMLStore.save(jobId,{preParam,nativeParam,unrootedTree,outputs,indels,jobTitle:fields.job_title,aligned});
+          $('progress').textContent = 'Saving job and opening results…';
+          await FastMLStore.save(jobId,{
+            msa,tree,preParam,joint:$('joint').checked,
+            outputs:{},log:'',status:'queued',stage:'queued',message:'Waiting to start',
+            jobTitle:fields.job_title,aligned,startedAt:Date.now()
+          });
           location.href = `output.html?job=${encodeURIComponent(jobId)}`;
         } catch(error) { $('error').textContent = error.message; $('progress').textContent = ''; }
         finally { $('submit-button').disabled = false; }

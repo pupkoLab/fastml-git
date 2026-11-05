@@ -8,22 +8,32 @@
     h1{color:#174c7d}pre{background:#eef3f7;border:1px solid #c8d6e0;border-radius:6px;padding:1rem;overflow:auto}
     a.download{display:inline-block;margin:.4rem .6rem .4rem 0;background:#136ca5;color:white;padding:.6rem 1rem;text-decoration:none;border-radius:5px}
     .note{background:#fff8e6;border-left:4px solid #d6a024;padding:.8rem 1rem}
+    .stages{display:flex;flex-wrap:wrap;gap:.5rem;padding:0;list-style:none}
+    .stages li{background:#e9eef3;border-radius:5px;padding:.35rem .6rem}
+    .stages li.active{background:#b9defb;color:#174c7d;font-weight:700}
+    .stages li.complete{background:#d9f3e6;color:#165d3b}
+    #run-log{max-height:260px;overflow:auto;font-size:.82rem;white-space:pre-wrap;overflow-wrap:anywhere}
+    #status{font-weight:600}
   </style>
 </head>
 <body>
   <h1>FastML — Results</h1>
-  <p id="status">Loading prepared files…</p>
+  <p id="status" role="status">Loading job…</p>
+  <ul id="stages" class="stages" aria-label="Pipeline progress"></ul>
   <div id="results" hidden>
-    <p><a id="download-pre" class="download" download="pre.param">Download pre.param</a>
-       <a id="download-native" class="download" download="param.file">Download param.file</a>
-       <a id="download-tree" class="download" download="unrooted_tree.txt">Download unrooted tree</a></p>
+    <p><a id="download-pre" class="download" download="pre.param" hidden>Download pre.param</a>
+       <a id="download-native" class="download" download="param.file" hidden>Download param.file</a>
+       <a id="download-tree" class="download" download="unrooted_tree.txt" hidden>Download unrooted tree</a></p>
     <h2>pre.param</h2><pre id="pre-preview"></pre>
     <h2>param.file</h2><pre id="native-preview"></pre>
     <h2>Unrooted tree</h2><pre id="tree-preview"></pre>
     <h2>FastML result files</h2>
     <p id="indel-status"></p>
     <ul id="fastml-files"></ul>
-    <p class="note">Results are stored locally in this browser, not on a server. Clearing browser storage may remove them; download any files you want to keep.</p>
+    <h2>Execution log</h2>
+    <p><a id="download-log" download="browser-run.log">Download buffered log</a></p>
+    <pre id="run-log"></pre>
+    <p class="note">Keep this tab open while the job is running. Closing or reloading it interrupts the worker; reloading a running job restarts the calculation. Results are stored locally in this browser, not on a server. Download any files you want to keep.</p>
   </div>
   <p><a href="index.html">Back to input form</a></p>
   <script src="fastml-store.js"></script>
@@ -34,21 +44,14 @@
         document.getElementById('status').textContent = 'No job selected. Return to the input form first.';
         return;
       }
-      let result;
-      try { result = await FastMLStore.load(jobId); }
+      let job;
+      try { job = await FastMLStore.load(jobId); }
       catch (error) { document.getElementById('status').textContent = `Could not load browser results: ${error.message}`; return; }
-      if (!result) { document.getElementById('status').textContent = 'Job not found in this browser. Results are stored locally, not on GitHub Pages.'; return; }
-      const urls = [];
-      if (typeof result.unrootedTree !== 'string') {
-        document.getElementById('status').textContent = 'Missing unrooted tree. Please submit the input form again.';
-        return;
-      }
-      for (const [id,content] of [['pre',result.preParam],['native',result.nativeParam],['tree',result.unrootedTree]]) {
-        document.getElementById(`${id}-preview`).textContent = content;
-        const url = URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));
-        urls.push(url);
-        document.getElementById(`download-${id}`).href = url;
-      }
+      if (!job) { document.getElementById('status').textContent = 'Job not found in this browser. Results are stored locally, not on GitHub Pages.'; return; }
+      const $ = id => document.getElementById(id);
+      let worker=null;
+      let urls=[];
+      const stageNames=[['unroot','Unroot tree'],['fastml','FastML'],['indel','IndelCoder'],['merge','Indel inference'],['done','Finished']];
       const labels = {
         'outTreeFileNewick.txt':'Reconstructed tree (Newick)',
         'outTreeFileAncestor.txt':'Ancestor-labeled tree',
@@ -66,24 +69,96 @@
         'indelcoder.param':'IndelCoder parameters',
         'indel_likelihood':'Ancestral indel likelihood and inferred states'
       };
-      const list = document.getElementById('fastml-files');
-      for (const [filename,content] of Object.entries(result.outputs || {})) {
-        const url = URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));
-        urls.push(url);
-        const li = document.createElement('li');
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.textContent = `${labels[filename] || filename} — ${filename}`;
-        li.appendChild(link);
-        list.appendChild(li);
+      function fileLink(link,filename,content) {
+        if(typeof content!=='string'){link.hidden=true;return;}
+        const url=URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));
+        urls.push(url);link.href=url;link.download=filename;link.hidden=false;
       }
-      window.addEventListener('pagehide',() => urls.forEach(url => URL.revokeObjectURL(url)),{once:true});
-      document.getElementById('indel-status').textContent = result.indels?.skipped
-        ? 'Indel reconstruction skipped: the input alignment contained no gaps.'
-        : `Indel reconstruction completed (gain/loss rate ${result.indels?.bestRate ?? 'unknown'}).`;
-      document.getElementById('status').textContent = result.jobTitle ? `Job: ${result.jobTitle} — FastML completed.` : 'FastML completed.';
-      document.getElementById('results').hidden = false;
+      function render() {
+        for(const url of urls)URL.revokeObjectURL(url);
+        urls=[];
+        const failed=job.status==='failed',done=job.status==='completed';
+        $('status').textContent = `${job.jobTitle ? `Job: ${job.jobTitle} — ` : ''}${failed?'Failed: ':done?'Completed: ':''}${job.message||job.stage}`;
+        const activeIndex=stageNames.findIndex(([key])=>key===job.stage);
+        $('stages').replaceChildren(...stageNames.map(([key,label],i)=>{
+          const li=document.createElement('li');li.textContent=label;
+          if(done||i<activeIndex)li.className='complete';
+          else if(i===activeIndex&&!failed)li.className='active';
+          return li;
+        }));
+        const files=job.outputs||{};
+        for(const [id,filename,content] of [
+          ['pre','pre.param',job.preParam],
+          ['native','param.file',files['param.file']],
+          ['tree','unrooted_tree.txt',files['unrooted_tree.txt']]
+        ]) {
+          $(id+'-preview').textContent=content||'Not available yet';
+          fileLink($('download-'+id),filename,content);
+        }
+        const list=$('fastml-files');list.replaceChildren();
+        for(const [filename,content] of Object.entries(files)) {
+          if(['param.file','unrooted_tree.txt'].includes(filename))continue;
+          const li=document.createElement('li'),link=document.createElement('a');
+          fileLink(link,filename,content);
+          link.textContent=`${labels[filename]||filename} — ${filename}`;
+          li.appendChild(link);list.appendChild(li);
+        }
+        $('run-log').textContent=(job.log||'').slice(-20000);
+        fileLink($('download-log'),'browser-run.log',job.log||'');
+        $('indel-status').textContent=job.indels
+          ?(job.indels.skipped?'Indel reconstruction skipped: input alignment contained no gaps.'
+            :`Indel reconstruction completed (gain/loss rate ${job.indels.bestRate}).`):'';
+        $('results').hidden=false;
+      }
+      render();
+      // The output page starts and owns the worker. Reloading during a run
+      // restarts from the original input, while already saved files remain accessible.
+      if(job.status==='completed'||job.status==='failed')return;
+      if(job.status==='running') {
+        job.message='Page reloaded: restarting computation from the beginning';
+        job.outputs={};job.log='';
+      }
+      job.status='running';job.stage='unroot';
+      render();
+      await FastMLStore.save(jobId,job);
+      try {worker=new Worker('fastml-worker.js');}
+      catch(error){job.status='failed';job.message=`Cannot start worker: ${error.message}`;render();await FastMLStore.save(jobId,job);return;}
+      // Serialize IndexedDB updates so large output files cannot overwrite
+      // later stage changes due to overlapping transactions.
+      let updateQueue=Promise.resolve();
+      async function handle(message) {
+        if(message.type==='stage') {
+          job.stage=message.stage;job.message=message.message;
+          job.log=(job.log||'')+`[${message.stage}] ${message.message}\n`;
+        } else if(message.type==='files') {
+          Object.assign(job.outputs,message.files);
+          if(message.metadata)Object.assign(job,message.metadata);
+        } else if(message.type==='log') {
+          job.log=(job.log||'')+message.text;
+        } else if(message.type==='done') {
+          job.status='completed';job.stage='done';job.message='All requested stages finished';
+          job.indels=message.indels;delete job.msa;delete job.tree;
+          worker.terminate();worker=null;
+        } else if(message.type==='error') {
+          job.status='failed';job.message=message.message;
+          worker.terminate();worker=null;
+        }
+        render();
+        await FastMLStore.save(jobId,job);
+      }
+      worker.onmessage=event=>{
+        updateQueue=updateQueue.then(()=>handle(event.data)).catch(error=>{
+          $('status').textContent=`Could not save job progress: ${error.message}`;
+        });
+      };
+      worker.onerror=event=>{
+        updateQueue=updateQueue.then(()=>handle({type:'error',message:event.message||'Worker failed'}));
+      };
+      worker.postMessage({type:'start',job:{msa:job.msa,tree:job.tree,preParam:job.preParam,joint:job.joint}});
+      window.addEventListener('pagehide',()=>{
+        for(const url of urls)URL.revokeObjectURL(url);
+        if(worker)worker.terminate();
+      });
     })();
   </script>
 </body>

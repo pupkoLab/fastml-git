@@ -21,6 +21,7 @@
     <h2>param.file</h2><pre id="native-preview"></pre>
     <h2>Unrooted tree</h2><pre id="tree-preview"></pre>
     <h2>FastML result files</h2>
+    <p id="indel-status"></p>
     <ul id="fastml-files"></ul>
     <p class="note">Results are stored locally in this browser, not on a server. Clearing browser storage may remove them; download any files you want to keep.</p>
   </div>
@@ -55,7 +56,15 @@
         'outFile_seq_marginal.txt':'Marginal reconstructed sequences',
         'outFile_prob_joint.txt':'Joint reconstruction probabilities',
         'outFile_seq_joint.txt':'Joint reconstructed sequences',
-        'reportFile.txt':'FastML report'
+        'reportFile.txt':'FastML report',
+        'outFile_seq_marginal_no_indel.txt':'Marginal sequences before indel reconstruction',
+        'outFile_seq_joint_no_indel.txt':'Joint sequences before indel reconstruction',
+        'indelCoder.report':'IndelCoder report',
+        'indelCoder.fasta':'Indel-coded binary alignment',
+        'indel.nexus':'Indel coordinate table (NEXUS)',
+        'indelcoder.log':'IndelCoder log',
+        'indelcoder.param':'IndelCoder parameters',
+        'indel_likelihood':'Ancestral indel likelihood and inferred states'
       };
       const list = document.getElementById('fastml-files');
       for (const [filename,content] of Object.entries(result.outputs || {})) {
@@ -70,6 +79,9 @@
         list.appendChild(li);
       }
       window.addEventListener('pagehide',() => urls.forEach(url => URL.revokeObjectURL(url)),{once:true});
+      document.getElementById('indel-status').textContent = result.indels?.skipped
+        ? 'Indel reconstruction skipped: the input alignment contained no gaps.'
+        : `Indel reconstruction completed (gain/loss rate ${result.indels?.bestRate ?? 'unknown'}).`;
       document.getElementById('status').textContent = result.jobTitle ? `Job: ${result.jobTitle} — FastML completed.` : 'FastML completed.';
       document.getElementById('results').hidden = false;
     })();

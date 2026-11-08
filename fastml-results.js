@@ -32,7 +32,12 @@
   };
   // These intermediate files remain in the saved job for debugging, but are
   // deliberately absent from the user-facing results table.
-  const hiddenFiles = new Set(['pre.param','pre.params','param.file','indelcoder.param','unrooted_tree.txt']);
+  const hiddenFiles = new Set([
+    'pre.param','pre.params','param.file','indelcoder.param','unrooted_tree.txt',
+    'indelCoder.report','indelCoder.fasta','indel.nexus','indelcoder.log',
+    'indel_likelihood','outFile_seq_marginal_no_indel.txt',
+    'outFile_seq_joint_no_indel.txt'
+  ]);
   let worker = null;
   let objectUrls = [];
 

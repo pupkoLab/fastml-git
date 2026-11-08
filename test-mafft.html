@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MAFFT WebAssembly — tbfast test</title>
+<style>
+body{max-width:900px;margin:2rem auto;padding:0 1rem;font:15px/1.5 system-ui,Arial,sans-serif;color:#243243}
+textarea{width:100%;box-sizing:border-box;font:13px/1.4 Consolas,monospace;padding:10px}
+label{display:block;margin:12px 0 5px;font-weight:600}input,button{font:inherit}
+input[type=text]{width:100%;max-width:500px;padding:5px}button{padding:9px 18px;margin:12px 12px 12px 0}
+pre{background:#f2f5f8;border:1px solid #d0dbe5;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;max-height:250px;overflow:auto}
+.note{background:#fff8e1;border-left:4px solid #e8bc4a;padding:12px}.error{color:#ac2020}
+ul{padding-left:22px}a{color:#145b92}#alignment{min-height:160px}
+</style>
+</head>
+<body>
+<h1>MAFFT WASM — tbfast test</h1>
+<p>This independent test uses Biowasm's MAFFT 7.520 <code>tbfast</code>. Its internal command interface may require experimentation; this page displays command output and files for diagnosis.</p>
+<label for="fasta-file">Upload unaligned FASTA</label><input id="fasta-file" type="file" accept=".fasta,.fas,.fa,.txt">
+<label for="fasta">Or paste FASTA sequences</label>
+<textarea id="fasta" rows="11">&gt;seq1
+ATGCTAGCTAGCTAGC
+&gt;seq2
+ATGCTAGTAGCTAGC
+&gt;seq3
+ATGCTAGCTAGC
+&gt;seq4
+ATGCGCTAGCTAGC
+&gt;seq5
+ATGCTAGCTAGCTAGCT</textarea>
+<p class="note">Pasted text takes precedence over the uploaded file. The default <code>-A</code> argument is an experimental starting point, not a verified equivalent of <code>mafft --auto</code>.</p>
+<label for="args">tbfast arguments (editable for debugging)</label><input type="text" id="args" value="-A">
+<div><button id="run">Run tbfast</button><button id="clear" type="button">Clear output</button></div>
+<p id="status" role="status"></p>
+<h2>Alignment candidate</h2><p id="validation"></p><textarea id="alignment" readonly placeholder="If tbfast returns aligned FASTA, it will appear here."></textarea>
+<p><a id="download-alignment" hidden download="mafft-aligned.fasta">Download aligned FASTA</a></p>
+<h2>tbfast output / diagnostics</h2><pre id="log"></pre>
+<h2>Files created inside Biowasm</h2><ul id="files"></ul>
+<script src="https://biowasm.com/cdn/v3/aioli.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $=id=>document.getElementById(id);
+  let downloadUrl=null;
+  const log=text=>{$('log').textContent+=String(text)+'\n';};
+  function parseFasta(text){
+    const sequences=[];let current=null;
+    for(const line of text.split(/\r?\n/)){
+      if(line.startsWith('>')){current={name:line.slice(1).trim(),seq:''};sequences.push(current);}
+      else if(line.trim()){
+        if(!current)return null;
+        current.seq+=line.trim();
+      }
+    }
+    return sequences.length>=2&&sequences.every(s=>s.name&&s.seq)?sequences:null;
+  }
+  function showAlignment(candidate,original){
+    const aligned=parseFasta(candidate);
+    if(!aligned)return false;
+    const sizes=new Set(aligned.map(s=>s.seq.length));
+    if(sizes.size!==1)return false;
+    const old=new Map(original.map(s=>[s.name,s.seq.replace(/-/g,'').toUpperCase()]));
+    const same=aligned.length===original.length&&aligned.every(s=>old.get(s.name)===s.seq.replace(/-/g,'').toUpperCase());
+    $('alignment').value=candidate;
+    $('validation').textContent=same?`Valid alignment: ${aligned.length} sequences, ${aligned[0].seq.length} columns; ungapped sequences match the input.`:'FASTA rows are equal length, but the original sequences or labels differ. Review before using.';
+    if(downloadUrl)URL.revokeObjectURL(downloadUrl);
+    downloadUrl=URL.createObjectURL(new Blob([candidate],{type:'text/plain'}));
+    $('download-alignment').href=downloadUrl;
+    $('download-alignment').hidden=false;
+    return true;
+  }
+  $('clear').onclick=()=>{$('log').textContent='';$('alignment').value='';$('validation').textContent='';$('files').replaceChildren();$('status').textContent='';$('download-alignment').hidden=true;};
+  $('run').onclick=async()=>{
+    $('clear').click();$('run').disabled=true;
+    try{
+      const file=$('fasta-file').files[0];
+      const fasta=$('fasta').value.trim()||(file?await file.text():'');
+      const original=parseFasta(fasta);
+      if(!original)throw Error('Enter at least two valid FASTA sequences.');
+      if(typeof Aioli==='undefined')throw Error('Aioli did not load. Check the network/CDN and retry.');
+      $('status').textContent='Loading tbfast.wasm…';
+      const cli=await new Aioli(['mafft/tbfast/7.520'],{printInterleaved:false});
+      log('Initialized Biowasm mafft/tbfast/7.520');
+      const cwd=await cli.pwd();log('Working directory: '+cwd);
+      const before=await cli.ls(cwd);
+      log('Directory before: '+JSON.stringify(before));
+      await cli.mount([{name:'input.fasta',data:fasta+'\n'}]);
+      cli.stdin=fasta+'\n';
+      const args=$('args').value.trim().split(/\s+/).filter(Boolean);
+      log('Running tbfast with arguments: '+JSON.stringify(args));
+      $('status').textContent='Running tbfast…';
+      let result;
+      try{result=await cli.exec('tbfast',args);}
+      catch(error){log('Execution exception: '+String(error));throw error;}
+      const stdout=typeof result==='string'?result:(result?.stdout||'');
+      const stderr=typeof result==='string'?'':(result?.stderr||'');
+      log('stdout:\n'+stdout);log('stderr:\n'+stderr);
+      if(!showAlignment(stdout,original))log('stdout was not a complete aligned FASTA. Checking output files.');
+      const after=await cli.ls(cwd);
+      log('Directory after: '+JSON.stringify(after));
+      const names=Array.isArray(after)?after:[];
+      for(const entry of names){
+        const name=typeof entry==='string'?entry:entry?.name;
+        if(!name||name==='.'||name==='..')continue;
+        const li=document.createElement('li');li.append(document.createTextNode(name+' '));
+        const link=document.createElement('a');link.textContent='Download';link.download=name;
+        try{link.href=await cli.download(`${cwd.replace(/\/$/,'')}/${name}`);li.append(link);}catch(error){li.append(document.createTextNode('(not downloadable: '+error.message+')'));}
+        $('files').append(li);
+      }
+      $('status').textContent=$('download-alignment').hidden?'Test completed; inspect diagnostics and files.':'Aligned FASTA detected.';
+    }catch(error){$('status').textContent='Test failed: '+error.message;$('status').className='error';log('ERROR: '+(error.stack||error));}
+    finally{$('run').disabled=false;}
+  };
+})();
+</script></body></html>

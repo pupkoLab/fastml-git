@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FastML Results</title>
+  <style>
+    :root{font-family:Arial,Helvetica,sans-serif;color:#252c33}
+    *{box-sizing:border-box}
+    body{margin:0;background:white;font-size:16px;line-height:1.55}
+    header{background:powderblue;text-align:center;padding:35px 16px 40px}
+    header h1{font-size:40px;font-weight:600;margin:0}
+    header p{margin:.25rem auto 0;font-size:18px}
+    main{max-width:850px;margin:38px auto;padding:0 22px}
+    h2{text-align:center;font-size:27px;margin:0 0 18px}
+    h3{font-size:21px;margin:30px 0 10px}
+    .status{text-align:center;margin:10px 0 20px;font-weight:bold;font-size:19px}
+    .status.running{color:#28679b}.status.failed{color:#ad3030}.status.completed{color:#24814c}
+    .job-details{margin:20px auto 27px;max-width:770px}
+    .job-details div{margin:5px 0;overflow-wrap:anywhere}
+    .stages{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin:0 auto 22px;padding:0}
+    .stages li{background:#ebeff3;border-radius:5px;padding:5px 10px;font-size:13px}
+    .stages li.complete{background:#d9f3e6;color:#176038}
+    .stages li.active{background:#c0e4fb;color:#124e7a;font-weight:bold}
+    .files{width:100%;border-collapse:collapse;margin:6px auto 20px;font-size:16px}
+    .files td,.files th{padding:10px 12px;border-top:1px solid #ddd}
+    .files tr:last-child td{border-bottom:1px solid #ddd}
+    .files td:last-child{text-align:center;width:100px}
+    .files a{color:#155e96;text-decoration:underline}
+    .notice{color:#556372;text-align:center;font-size:14px}
+    details{margin:24px 0 30px;border-top:1px solid #ddd;padding-top:10px;color:#52606d}
+    summary{cursor:pointer;font-size:14px}
+    #run-log{font:12px/1.4 ui-monospace,Consolas,monospace;max-height:110px;overflow:auto;background:#f3f6f8;border:1px solid #dfe5eb;padding:9px;white-space:pre-wrap;overflow-wrap:anywhere}
+    .back{text-align:center;margin:24px 0 42px}
+    .back a{color:#155e96}
+    [hidden]{display:none!important}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>FastML</h1>
+    <p>Server for computing Maximum Likelihood ancestral sequence reconstruction</p>
+  </header>
+  <main>
+    <h2>Job Status — <span id="state-label">PREPARING</span></h2>
+    <p id="status" class="status running" role="status">Loading job…</p>
+    <ul id="stages" class="stages" aria-label="Processing stages"></ul>
+    <div class="job-details">
+      <div><b>Job title:</b> <span id="job-title"></span></div>
+      <div><b>Alignment:</b> <span id="alignment-name"></span></div>
+      <div><b>Running mode:</b> <span id="running-mode"></span></div>
+    </div>
+    <h3 style="text-align:center">The result files are:</h3>
+    <p id="file-notice" class="notice">Files will appear as processing stages finish.</p>
+    <table class="files" aria-label="FastML result files">
+      <thead><tr><th>Result file</th><th>Download</th></tr></thead>
+      <tbody id="file-rows"></tbody>
+    </table>
+    <p id="indel-status" class="notice"></p>
+    <details>
+      <summary>Execution log (buffered)</summary>
+      <pre id="run-log"></pre>
+      <a id="download-log" download="browser-run.log">Download complete log</a>
+    </details>
+    <p class="notice">Keep this tab open during computation. Reloading an unfinished job restarts it. Files are stored in this browser; download them to keep permanent copies.</p>
+    <p class="back"><a href="index.html">Start a new FastML job</a></p>
+  </main>
+  <script src="fastml-store.js"></script>
+  <script src="fastml-results.js"></script>
+</body>
+</html>

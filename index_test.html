@@ -110,9 +110,11 @@
           await FastMLStore.save(jobId,{
             msa,tree,preParam,joint:$('joint').checked,
             outputs:{},log:'',status:'queued',stage:'queued',message:'Waiting to start',
-            jobTitle:fields.job_title,aligned,startedAt:Date.now()
+            jobTitle:fields.job_title,aligned,startedAt:Date.now(),
+            alignmentName:$('msa-text').value.trim()?'Pasted FASTA':($('msa-file').files[0]?.name||'FASTA'),
+            model,branch:fields.branch,gamma:fields.gamma,alpha
           });
-          location.href = `output.html?job=${encodeURIComponent(jobId)}`;
+          location.href = `results.html?job=${encodeURIComponent(jobId)}`;
         } catch(error) { $('error').textContent = error.message; $('progress').textContent = ''; }
         finally { $('submit-button').disabled = false; }
       });

@@ -10,7 +10,7 @@
 
   const MODELS = Object.freeze({
     JTT: 'JTT', LG: 'LG', cpREV: 'CPREV', WAG: 'WAG',
-    Dayhoff: 'Dayhoff', MIX: 'MIX', JC_Nuc: 'NUCJC',
+    Dayhoff: 'DAY', MIX: 'MIX', JC_Nuc: 'NUCJC',
     T92: 'TAMURA92', HKY: 'HKY', empiriCodon: 'EMPIRICODON',
     yang: 'NYCODON'
   });

@@ -41,6 +41,9 @@
   function validateFastMLOptions(preParam) {
     const p = typeof preParam === 'string' ? parsePreParam(preParam) : preParam;
     if (!p || typeof p !== 'object') throw new TypeError('preParam must be text or an object');
+    if (p.model === 'yang') {
+      throw new Error('The Yang codon model is disabled in this build because its native optimization crashes. Please select Empirical codon.');
+    }
     const branch = p.branch === 'on';
     const gamma = p.gamma !== 'off';
     const optimizeAlpha = !p.alpha || p.alpha === 'optimize';

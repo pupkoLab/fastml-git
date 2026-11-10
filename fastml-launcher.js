@@ -3,17 +3,17 @@
   'use strict';
   const required=[
     'fastml-node-runner.js','run-fastml.sh','run-fastml.bat','fastml-node-README.txt',
-    'prepare-fastml.js','fastml-indels.js',
+    'prepare-fastml.js','fastml-indels.js','fastml-archive.js',
     'tree_unroot.js','tree_unroot.wasm',
     'fastml.js','fastml.wasm',
     'indelCoder.js','indelCoder.wasm'
   ];
-  async function build({msa,tree,preParam,aligned,joint,onProgress=()=>{}}){
+  async function build({msa,tree,preParam,aligned,joint,jobTitle='',onProgress=()=>{}}){
     const entries={
       'inputs/data.fas':msa,
       'inputs/tree.newick':tree,
       'pre.param':preParam,
-      'launcher.json':JSON.stringify({aligned,joint},null,2)+'\n'
+      'launcher.json':JSON.stringify({aligned,joint,jobTitle},null,2)+'\n'
     };
     for(let i=0;i<required.length;i++){
       const filename=required[i];onProgress(`Downloading launcher assets (${i+1}/${required.length}): ${filename}`);

@@ -18,6 +18,9 @@ Windows:
 
 Results are written to the results/ folder.
 Execution output and errors are saved to fastml-run.log.
+After a successful run, results.zip is created in this folder.
+Upload results.zip using "Upload previous results" on the FastML GitHub
+Pages home page to view the results in results.html.
 
 The input FASTA, Newick tree, and pre.param are included in the ZIP. If you
 edit those files after extracting, rerun the script to recalculate results.

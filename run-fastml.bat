@@ -5,4 +5,4 @@ if errorlevel 1 (
   echo FastML failed. See fastml-run.log
   exit /b 1
 )
-echo FastML finished. See results\ and fastml-run.log
+echo FastML finished. See results\, results.zip and fastml-run.log

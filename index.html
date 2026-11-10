@@ -103,7 +103,7 @@ NS------SWYENGS-SIWY------------SINNTTEN----IT-LPCRIKQIINMWQGVGKAMYAPPIAGQIKCSSN
       const fields={msa:'/input/data.fas',tree:'/input/tree.txt',model:$('model').value,isAligned:'aligned',joint:$('joint').checked?'on':'off',branch:$('branch').checked?'on':'off',gamma:$('gamma').checked?'on':'off',alpha};
       FastMLPrepare.validateFastMLOptions(fields);
       const preParam=Object.entries(fields).map(([key,value])=>`${key} ${value}`).join('\n')+'\n';
-      const blob=await FastMLLauncher.build({msa,tree,preParam,aligned,joint:$('joint').checked,onProgress:msg=>$('progress').textContent=msg});
+      const blob=await FastMLLauncher.build({msa,tree,preParam,aligned,joint:$('joint').checked,jobTitle:$('job-title').value.trim(),onProgress:msg=>$('progress').textContent=msg});
       const safeTitle=($('job-title').value.trim()||'job').replace(/[^a-zA-Z0-9_.-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70)||'job';
       const url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download=`fastml-launch-node-${safeTitle}.zip`;link.click();

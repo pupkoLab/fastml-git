@@ -25,7 +25,7 @@ button:disabled{opacity:.5}.actions{display:flex;gap:12px;margin:20px 0}.error{c
 <label><input type="radio" name="seq-type" value="aa" checked> Amino Acids</label>
 <label><input type="radio" name="seq-type" value="nuc"> Nucleotides</label>
 <label><input type="radio" name="seq-type" value="codon"> Codons</label></div></div>
-<div class="field"><b>Aligned:</b><div class="choices"><label><input type="radio" name="aligned" value="aligned" checked> Aligned (MSA)</label><label><input type="radio" name="aligned" value="not-aligned" disabled> Not Aligned</label></div><p class="hint">An aligned MSA is required in the browser version.</p></div>
+<div class="field"><b>Aligned:</b><div class="choices"><label><input type="radio" name="aligned" value="aligned" checked> Aligned (MSA)</label><label><input type="radio" name="aligned" value="not-aligned"> Not Aligned</label></div><p class="hint">Unaligned amino acid or nucleotide FASTA will be aligned with Kalign before FastML. Codon-aware alignment is not available.</p></div>
 <div class="field"><label for="tree-text"><b>Type your phylogenetic tree (required)</b> (Newick format only)</label><textarea id="tree-text" rows="3"></textarea></div>
 <div class="field"><b style="color:#b00">OR</b></div>
 <div class="field"><label for="tree-file"><b>Upload phylogenetic tree file</b> (Newick format only)</label><input type="file" id="tree-file" accept=".tree,.tre,.nwk,.txt"></div>
@@ -63,8 +63,9 @@ button:disabled{opacity:.5}.actions{display:flex;gap:12px;margin:20px 0}.error{c
       const mode=document.querySelector('[name="alpha-mode"]:checked').value;
       const alpha=mode==='optimize'?'optimize':$('alpha-value').value.trim();
       if($('gamma').checked&&mode==='user'&&!(Number(alpha)>0))throw new Error('Please provide a positive alpha value.');
-      const model=$('model').value,aligned='aligned';
-      const fields={msa:'/input/data.fas',tree:'/input/tree.txt',model,isAligned:aligned,joint:$('joint').checked?'on':'off',branch:$('branch').checked?'on':'off',gamma:$('gamma').checked?'on':'off',alpha,treeMethod:'',structure:'',PDB:'',chain:'',job_title:$('job-title').value.trim()};
+      const model=$('model').value,aligned=document.querySelector('[name="aligned"]:checked').value;
+      if(aligned==='not-aligned'&&document.querySelector('[name="seq-type"]:checked').value==='codon')throw new Error('Codon-aware alignment is not supported. Please supply an aligned codon MSA.');
+      const fields={msa:'/input/data.fas',tree:'/input/tree.txt',model,isAligned:'aligned',joint:$('joint').checked?'on':'off',branch:$('branch').checked?'on':'off',gamma:$('gamma').checked?'on':'off',alpha,treeMethod:'',structure:'',PDB:'',chain:'',job_title:$('job-title').value.trim()};
       const preParam=Object.entries(fields).filter(([,value])=>value!=='').map(([key,value])=>`${key} ${value}`).join('\n')+'\n';
       const jobId=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random()}`;
       $('progress').textContent='Saving job and opening results…';

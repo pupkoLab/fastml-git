@@ -42,6 +42,18 @@
   let worker = null;
   let objectUrls = [];
 
+  $('download-results').addEventListener('click', () => {
+    try {
+      $('archive-error').textContent='';
+      const blob=FastMLArchive.fromJob(job);
+      const url=URL.createObjectURL(blob);
+      const link=document.createElement('a');
+      const safeTitle=(job.jobTitle||'results').replace(/[^a-zA-Z0-9_.-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70)||'results';
+      link.href=url;link.download=`fastml-${safeTitle}.zip`;link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+    } catch(error) { $('archive-error').textContent=`Could not create ZIP: ${error.message}`; }
+  });
+
   function parseFasta(text) {
     const rows=[];let row=null;
     for (const line of text.split(/\r?\n/)) {
@@ -143,6 +155,7 @@
   await FastMLStore.save(jobId,job);
   if(job.aligned==='not-aligned'&&!job.alignmentCompleted) {
     try {
+      job.originalMsa ||= job.msa;
       job.message='Aligning unaligned FASTA using Kalign';
       render();
       const aligned=await alignWithKalign(job.msa);
@@ -183,8 +196,7 @@
       job.stage = 'done';
       job.message = 'All requested stages finished';
       job.indels = message.indels;
-      delete job.msa;
-      delete job.tree;
+      // Keep the submitted inputs so completed jobs can be exported as full ZIPs.
       worker?.terminate();
       worker = null;
     } else if (message.type === 'error') {

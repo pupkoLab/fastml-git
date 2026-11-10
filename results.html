@@ -33,6 +33,8 @@
     #run-log{font:12px/1.4 ui-monospace,Consolas,monospace;max-height:110px;overflow:auto;background:#f3f6f8;border:1px solid #dfe5eb;padding:9px;white-space:pre-wrap;overflow-wrap:anywhere}
     .back{text-align:center;margin:24px 0 42px}
     .back a{color:#155e96}
+    .archive-actions{text-align:center;margin:20px 0 28px}
+    .archive-actions button{font:inherit;padding:9px 20px;border:1px solid #377caf;background:#e4f1fb;color:#155e96;font-weight:bold;cursor:pointer}
     [hidden]{display:none!important}
   </style>
 </head>
@@ -56,6 +58,7 @@
       <thead><tr><th>Result file</th><th>Download</th></tr></thead>
       <tbody id="file-rows"></tbody>
     </table>
+    <div class="archive-actions"><button id="download-results" type="button">Download results (ZIP)</button><p id="archive-error" class="notice" role="alert"></p></div>
     <p id="indel-status" class="notice"></p>
     <details>
       <summary>Execution log (buffered)</summary>
@@ -66,6 +69,7 @@
     <p class="back"><a href="index.html">Start a new FastML job</a></p>
   </main>
   <script src="fastml-store.js"></script>
+  <script src="fastml-archive.js"></script>
   <script src="https://biowasm.com/cdn/v3/aioli.js"></script>
   <script src="fastml-results.js"></script>
 </body>

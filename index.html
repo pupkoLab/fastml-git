@@ -18,6 +18,7 @@ button:disabled{opacity:.5}.actions{display:flex;gap:12px;margin:20px 0}.error{c
 <header><div class="brand"><div class="logo">FastML</div><div><h1>The FASTML Server</h1><div class="subtitle">Server for computing Maximum Likelihood<br>ancestral sequence reconstruction</div></div></div>
 <nav><a href="index.html">HOME</a><a href="https://fastml.tau.ac.il/">ORIGINAL FASTML SERVER</a></nav></header>
 <main><p class="hint">Browser version: calculations run locally using WebAssembly.</p>
+<div class="field"><label for="previous-results"><b>Upload previous results</b> (FastML results ZIP)</label><input id="previous-results" type="file" accept=".zip,application/zip"><p id="import-status" class="hint" role="status"></p></div>
 <form id="fastml-form">
 <div class="field"><label for="msa-text"><b>Type sequences here</b> (FASTA format only)</label><textarea id="msa-text" rows="6"></textarea></div>
 <div class="field"><label for="msa-file"><b>Or upload file</b></label><input id="msa-file" type="file" accept=".fa,.fas,.fasta,.txt"></div>
@@ -40,10 +41,20 @@ button:disabled{opacity:.5}.actions{display:flex;gap:12px;margin:20px 0}.error{c
 <div class="option"><label><input type="checkbox" id="joint" checked> Compute also joint reconstruction</label></div>
 <div class="field"><label for="job-title">Job title (Optional)</label><input id="job-title" type="text" size="44" maxlength="100"><p class="hint">Enter a descriptive job title for your FastML query.</p></div>
 </section><div class="actions"><button type="submit">RUN</button><button type="reset">Clear</button></div></form></main>
-<script src="fastml-store.js"></script><script src="prepare-fastml.js"></script><script>
+<script src="fastml-store.js"></script><script src="fastml-archive.js"></script><script src="prepare-fastml.js"></script><script>
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  $('previous-results').addEventListener('change',async event=>{
+    const file=event.target.files?.[0];if(!file)return;
+    $('import-status').textContent='Reading results archive…';
+    try {
+      const imported=await FastMLArchive.importJob(file);
+      const jobId=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random()}`;
+      await FastMLStore.save(jobId,imported);
+      location.href=`results.html?job=${encodeURIComponent(jobId)}`;
+    } catch(error) { $('import-status').textContent=`Cannot load ZIP: ${error.message}`;event.target.value=''; }
+  });
   const aminoAcidExample = `>AY901967.C
 NL------TKKD----RTIKDGNET--------------I----IT-LPCRIKQIVRMWQGVGQAMYAPPIAGNITCRSNITGLLLTRDGGK------TNGTGNNKTETEIFRPAGGNMK
 >EF514699.B

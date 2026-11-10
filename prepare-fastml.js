@@ -9,7 +9,7 @@
   'use strict';
 
   const MODELS = Object.freeze({
-    JTT: 'JTT', LG: 'LG', cpREV: 'CPREV', WAG: 'WAG',
+    JTT: 'JTT', LG: 'LG', cpREV: 'CPREV', mtREV: 'REV', WAG: 'WAG',
     Dayhoff: 'DAY', MIX: 'MIX', JC_Nuc: 'NUCJC',
     T92: 'TAMURA92', HKY: 'HKY', empiriCodon: 'EMPIRICODON',
     yang: 'NYCODON'

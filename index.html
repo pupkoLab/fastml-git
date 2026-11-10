@@ -57,7 +57,7 @@ NS------TWHTNKT----------------KGLNDTGINGT--II-LPCRIKQIAILRLEVGKAMYAPPPIKQQRCESY
 >AB287368.B
 NS------SWYENGS-SIWY------------SINNTTEN----IT-LPCRIKQIINMWQGVGKAMYAPPIAGQIKCSSNITGLLLTRDGGGDGNND------S-----EIFRPEGGNMK`;
   const aminoAcidTree = '(DQ056417.C:0.385001676320433,(AY901967.C:0.439181229824069,(AB287368.B:0.350054934966739,(DQ886037.B:0.382948002552644,(EF514699.B:0.409102812594311,DQ358805.B:0.405844325566786):0.00873314505308399):0.0327495987899325):0.424904820901794):0.0114267685208704);';
-  const models = {aa:[['JTT','JTT (default)'],['LG','LG'],['cpREV','cpREV'],['WAG','WAG'],['Dayhoff','Dayhoff']],nuc:[['JC_Nuc','JC69 (default)'],['T92','T92'],['HKY','HKY85']],codon:[['yang','Yang'],['empiriCodon','Empirical codon']]};
+  const models = {aa:[['JTT','JTT (default)'],['LG','LG'],['cpREV','cpREV'],['WAG','WAG'],['Dayhoff','Dayhoff'],['mtREV', 'mtREV']],nuc:[['JC_Nuc','JC69 (default)'],['T92','T92'],['HKY','HKY85']],codon:[['yang','Yang'],['empiriCodon','Empirical codon']]};
   function updateModels(){const type=document.querySelector('[name="seq-type"]:checked').value;$('model').replaceChildren(...models[type].map(([value,label])=>new Option(label,value)));}
   function updateGamma(){const enabled=$('gamma').checked;$('gamma-options').hidden=!enabled;$('alpha-value').disabled=!enabled||document.querySelector('[name="alpha-mode"]:checked').value!=='user';}
   document.querySelectorAll('[name="seq-type"]').forEach(x=>x.addEventListener('change',updateModels));

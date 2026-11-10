@@ -37,6 +37,26 @@
     return `${dir.replace(/\/$/, '')}/${name}`;
   }
 
+  // Avoid native FastML optimization paths that currently exit or return no likelihood.
+  function validateFastMLOptions(preParam) {
+    const p = typeof preParam === 'string' ? parsePreParam(preParam) : preParam;
+    if (!p || typeof p !== 'object') throw new TypeError('preParam must be text or an object');
+    const branch = p.branch === 'on';
+    const gamma = p.gamma !== 'off';
+    const optimizeAlpha = !p.alpha || p.alpha === 'optimize';
+    if (!branch && gamma && optimizeAlpha) {
+      throw new Error('Optimizing gamma requires branch-length optimization. Enable Optimize Branch Lengths, disable Gamma Distribution, or provide a fixed alpha.');
+    }
+    if (['JC_Nuc', 'T92', 'HKY'].includes(p.model)) {
+      if (!branch || !gamma) {
+        throw new Error('This FastML build currently supports nucleotide reconstruction only with both Optimize Branch Lengths and Use Gamma Distribution enabled. Other paths require native C++ repairs.');
+      }
+      if (p.model === 'T92' || p.model === 'HKY') {
+        throw new Error(`${p.model === 'T92' ? 'T92' : 'HKY85'} is not yet supported reliably in this FastML WASM build: its native parameter-optimization path is incomplete.`);
+      }
+    }
+  }
+
   /**
    * @param {string|object} preParam - pre.param text or parsed key/value object
    * @param {object} options
@@ -49,6 +69,7 @@
   function prepareFastMLParams(preParam, options = {}) {
     const p = typeof preParam === 'string' ? parsePreParam(preParam) : preParam;
     if (!p || typeof p !== 'object') throw new TypeError('preParam must be text or an object');
+    validateFastMLOptions(p);
     const wd = safePath(options.workDir || '/results', 'workDir');
     const model = MODELS[p.model];
     if (!model) throw new Error(`Unsupported model: ${String(p.model)}`);
@@ -110,5 +131,5 @@
     return path;
   }
 
-  return { MODELS, parsePreParam, prepareFastMLParams, writeFastMLParams };
+  return { MODELS, parsePreParam, validateFastMLOptions, prepareFastMLParams, writeFastMLParams };
 });

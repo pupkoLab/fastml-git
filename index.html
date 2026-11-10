@@ -40,7 +40,7 @@ button:disabled{opacity:.5}.actions{display:flex;gap:12px;margin:20px 0}.error{c
 <div class="option"><label><input type="checkbox" id="joint" checked> Compute also joint reconstruction</label></div>
 <div class="field"><label for="job-title">Job title (Optional)</label><input id="job-title" type="text" size="44" maxlength="100"><p class="hint">Enter a descriptive job title for your FastML query.</p></div>
 </section><div class="actions"><button type="submit">RUN</button><button type="reset">Clear</button></div></form></main>
-<script src="fastml-store.js"></script><script>
+<script src="fastml-store.js"></script><script src="prepare-fastml.js"></script><script>
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -87,6 +87,7 @@ NS------SWYENGS-SIWY------------SINNTTEN----IT-LPCRIKQIINMWQGVGKAMYAPPIAGQIKCSSN
       const model=$('model').value,aligned=document.querySelector('[name="aligned"]:checked').value;
       if(aligned==='not-aligned'&&document.querySelector('[name="seq-type"]:checked').value==='codon')throw new Error('Codon-aware alignment is not supported. Please supply an aligned codon MSA.');
       const fields={msa:'/input/data.fas',tree:'/input/tree.txt',model,isAligned:'aligned',joint:$('joint').checked?'on':'off',branch:$('branch').checked?'on':'off',gamma:$('gamma').checked?'on':'off',alpha,treeMethod:'',structure:'',PDB:'',chain:'',job_title:$('job-title').value.trim()};
+      FastMLPrepare.validateFastMLOptions(fields);
       const preParam=Object.entries(fields).filter(([,value])=>value!=='').map(([key,value])=>`${key} ${value}`).join('\n')+'\n';
       const jobId=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random()}`;
       $('progress').textContent='Saving job and opening results…';

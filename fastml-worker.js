@@ -28,6 +28,7 @@ function moduleOptions() {
 function getFile(mod,path) {return mod.FS.readFile(path,{encoding:'utf8'});}
 
 async function processJob({msa,tree,preParam,joint}) {
+  FastMLPrepare.validateFastMLOptions(preParam);
   stage('unroot','Loading tree unrooting WASM');
   const unroot=await createTreeUnrootModule(moduleOptions());
   unroot.FS.mkdir('/input');unroot.FS.mkdir('/results');

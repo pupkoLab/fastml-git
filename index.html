@@ -4,7 +4,7 @@
 <style>
 body{margin:0;font:15px/1.5 Verdana,Arial,sans-serif;color:#222}*{box-sizing:border-box}
 header{padding:18px 24px 8px;border-bottom:1px solid #aaa}.brand{display:flex;align-items:center;gap:22px}
-.logo{display:grid;place-items:center;width:210px;height:120px;border:2px solid #c3d7e8;color:#003399;font:700 44px Georgia,serif}
+.logo{display:block;width:210px;max-height:120px;object-fit:contain}
 h1{font:normal 42px 'Comic Sans MS',Arial,sans-serif;color:#003399;margin:0}.subtitle{color:#725a5a;font-size:20px}
 nav{margin-top:14px;font-weight:bold;font-size:13px}nav a{color:#174c83;margin-right:22px;text-decoration:none}
 main{max-width:800px;padding:16px 25px 60px}.field{margin:18px 0}.field>label,.field>b{display:block;margin-bottom:6px}
@@ -13,9 +13,9 @@ input,select,button{font:inherit}.choices{display:flex;flex-wrap:wrap;gap:16px;m
 h2{font-size:20px;margin-top:28px}.advanced{border-top:1px solid #ccc;margin-top:30px}.option{margin:13px 0}
 button{padding:7px 20px;background:#e4efff;color:#003399;border:1px solid #90abc2;font-weight:bold;cursor:pointer}
 button:disabled{opacity:.5}.actions{display:flex;gap:12px;margin:20px 0}.error{color:#a71919;white-space:pre-wrap;font-weight:bold}
-@media(max-width:630px){.logo{display:none}h1{font-size:31px}.subtitle{font-size:16px}header,main{padding-left:14px;padding-right:14px}}
+@media(max-width:630px){.logo{width:90px;max-height:75px}.brand{gap:12px}h1{font-size:31px}.subtitle{font-size:16px}header,main{padding-left:14px;padding-right:14px}}
 </style></head><body>
-<header><div class="brand"><div class="logo">FastML</div><div><h1>The FASTML Server</h1><div class="subtitle">Server for computing Maximum Likelihood<br>ancestral sequence reconstruction</div></div></div>
+<header><div class="brand"><img class="logo" src="FastML_logo.jpg" alt="FastML logo"><div><h1>The FASTML Server</h1><div class="subtitle">Server for computing Maximum Likelihood<br>ancestral sequence reconstruction</div></div></div>
 <nav><a href="index.html">HOME</a><a href="https://fastml.tau.ac.il/">ORIGINAL FASTML SERVER</a></nav></header>
 <main><p class="hint">Browser version: calculations run locally using WebAssembly.</p>
 <div class="field"><label for="previous-results"><b>Upload previous results</b> (FastML results ZIP)</label><input id="previous-results" type="file" accept=".zip,application/zip"><p id="import-status" class="hint" role="status"></p></div>

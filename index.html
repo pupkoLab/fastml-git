@@ -12,7 +12,7 @@ textarea{display:block;width:100%;font:14px/1.4 Consolas,monospace;padding:8px}i
 input,select,button{font:inherit}.choices{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0}.hint{font-size:12px;color:#666}
 h2{font-size:20px;margin-top:28px}.advanced{border-top:1px solid #ccc;margin-top:30px}.option{margin:13px 0}
 button{padding:7px 20px;background:#e4efff;color:#003399;border:1px solid #90abc2;font-weight:bold;cursor:pointer}
-button:disabled{opacity:.5}.actions{display:flex;gap:12px;margin:20px 0}.error{color:#a71919;white-space:pre-wrap;font-weight:bold}
+button:disabled{opacity:.5}.actions{display:flex;flex-wrap:wrap;gap:12px;margin:20px 0}.error{color:#a71919;white-space:pre-wrap;font-weight:bold}
 @media(max-width:630px){.logo{width:90px;max-height:75px}.brand{gap:12px}h1{font-size:31px}.subtitle{font-size:16px}header,main{padding-left:14px;padding-right:14px}}
 </style></head><body>
 <header><div class="brand"><img class="logo" src="FastML_logo.jpg" alt="FastML logo"><div><h1>The FASTML Server</h1><div class="subtitle">Server for computing Maximum Likelihood<br>ancestral sequence reconstruction</div></div></div>
@@ -31,7 +31,8 @@ button:disabled{opacity:.5}.actions{display:flex;gap:12px;margin:20px 0}.error{c
 <div class="field"><b style="color:#b00">OR</b></div>
 <div class="field"><label for="tree-file"><b>Upload phylogenetic tree file</b> (Newick format only)</label><input type="file" id="tree-file" accept=".tree,.tre,.nwk,.txt"></div>
 <div class="field"><h2>Model of substitution:</h2><select id="model" aria-label="Substitution model"></select></div>
-<div class="actions"><button id="submit-button" type="submit">RUN</button><button type="reset">Clear</button><button id="load-aa-example" type="button">Load Amino Acid Example</button></div>
+<div class="actions"><button id="submit-button" type="submit">RUN</button><button id="download-node-launcher" type="button">Download Node Launcher</button><button type="reset">Clear</button><button id="load-aa-example" type="button">Load Amino Acid Example</button></div>
+<p class="hint">Node launcher: includes inputs and WebAssembly modules. Requires Node.js 18+; unaligned inputs also require Kalign installed on your computer.</p>
 <p id="progress" class="hint" role="status"></p><p id="error" class="error" role="alert"></p>
 <section class="advanced"><h2><u>Advanced options</u></h2>
 <div class="option"><label><input type="checkbox" id="branch" checked> Optimize Branch Lengths</label></div>
@@ -41,7 +42,7 @@ button:disabled{opacity:.5}.actions{display:flex;gap:12px;margin:20px 0}.error{c
 <div class="option"><label><input type="checkbox" id="joint" checked> Compute also joint reconstruction</label></div>
 <div class="field"><label for="job-title">Job title (Optional)</label><input id="job-title" type="text" size="44" maxlength="100"><p class="hint">Enter a descriptive job title for your FastML query.</p></div>
 </section><div class="actions"><button type="submit">RUN</button><button type="reset">Clear</button></div></form></main>
-<script src="fastml-store.js"></script><script src="fastml-archive.js"></script><script src="prepare-fastml.js"></script><script>
+<script src="fastml-store.js"></script><script src="fastml-archive.js"></script><script src="fastml-launcher.js"></script><script src="prepare-fastml.js"></script><script>
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -85,6 +86,32 @@ NS------SWYENGS-SIWY------------SINNTTEN----IT-LPCRIKQIINMWQGVGKAMYAPPIAGQIKCSSN
   $('fastml-form').addEventListener('reset',()=>setTimeout(()=>{updateModels();updateGamma();$('error').textContent='';$('progress').textContent='';},0));
   updateModels();updateGamma();
   async function getInput(textId,fileId,label){const text=$(textId).value.trim();const file=$(fileId).files[0];const result=text||(file?await file.text():'');if(!result.trim())throw new Error(`Please provide ${label}.`);return result;}
+  $('download-node-launcher').addEventListener('click',async()=>{
+    const button=$('download-node-launcher');button.disabled=true;
+    $('error').textContent='';$('progress').textContent='Preparing Node launcher…';
+    try {
+      const msa=await getInput('msa-text','msa-file','FASTA sequences');
+      const tree=await getInput('tree-text','tree-file','a Newick tree');
+      if(!/^\s*>/m.test(msa))throw new Error('Sequence input must be in FASTA format.');
+      if(!tree.trim().endsWith(';'))throw new Error('Newick tree must end with a semicolon (;).');
+      const aligned=document.querySelector('[name="aligned"]:checked').value;
+      const seqType=document.querySelector('[name="seq-type"]:checked').value;
+      if(aligned==='not-aligned'&&seqType==='codon')throw new Error('Codon-aware alignment is not supported. Please supply an aligned codon MSA.');
+      const alphaMode=document.querySelector('[name="alpha-mode"]:checked').value;
+      const alpha=alphaMode==='optimize'?'optimize':$('alpha-value').value.trim();
+      if($('gamma').checked&&alphaMode==='user'&&!(Number(alpha)>0))throw new Error('Please provide a positive alpha value.');
+      const fields={msa:'/input/data.fas',tree:'/input/tree.txt',model:$('model').value,isAligned:'aligned',joint:$('joint').checked?'on':'off',branch:$('branch').checked?'on':'off',gamma:$('gamma').checked?'on':'off',alpha};
+      FastMLPrepare.validateFastMLOptions(fields);
+      const preParam=Object.entries(fields).map(([key,value])=>`${key} ${value}`).join('\n')+'\n';
+      const blob=await FastMLLauncher.build({msa,tree,preParam,aligned,joint:$('joint').checked,onProgress:msg=>$('progress').textContent=msg});
+      const safeTitle=($('job-title').value.trim()||'job').replace(/[^a-zA-Z0-9_.-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70)||'job';
+      const url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download=`fastml-launch-node-${safeTitle}.zip`;link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      $('progress').textContent='Node launcher downloaded. Extract the ZIP and run run-fastml.sh or run-fastml.bat.';
+    }catch(error){$('error').textContent=`Node launcher: ${error.message}`;$('progress').textContent='';}
+    finally{button.disabled=false;}
+  });
   $('fastml-form').addEventListener('submit',async event=>{
     event.preventDefault();$('error').textContent='';const buttons=[...document.querySelectorAll('[type="submit"]')];buttons.forEach(x=>x.disabled=true);$('progress').textContent='Reading inputs…';
     try{

@@ -5,7 +5,7 @@
 (function(root){
   'use strict';
   const enc=new TextEncoder(),dec=new TextDecoder();
-  const MAX_ZIP=100*1024*1024,MAX_FILE=100*1024*1024;
+  const MAX_ZIP=100*1024*1024,MAX_FILE=300*1024*1024;
   const table=Uint32Array.from({length:256},(_,n)=>{
     for(let k=0;k<8;k++)n=n&1?0xedb88320^(n>>>1):n>>>1;
     return n>>>0;

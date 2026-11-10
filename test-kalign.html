@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kalign WASM alignment test</title>
+<style>
+body{max-width:850px;margin:2rem auto;padding:0 1rem;color:#243243;font:15px/1.5 system-ui,Arial,sans-serif}
+textarea{width:100%;box-sizing:border-box;font:13px/1.4 Consolas,monospace;padding:10px}label{display:block;margin:12px 0 5px;font-weight:600}
+pre{background:#eef3f7;border:1px solid #c9d8e5;padding:12px;white-space:pre-wrap;max-height:250px;overflow:auto}
+button{padding:9px 17px;margin:15px 8px 10px 0}a{color:#155b94}.error{color:#a02020}
+</style></head><body>
+<h1>Kalign WebAssembly test</h1>
+<p>Runs <strong>Kalign 3.3.1</strong> in your browser using Biowasm. No files are uploaded to a server.</p>
+<label for="file">Upload unaligned FASTA</label><input type="file" id="file" accept=".fasta,.fas,.fa,.txt">
+<label for="fasta">Or paste sequences</label>
+<textarea id="fasta" rows="11">&gt;seq1
+ATGCTAGCTAGCTAGC
+&gt;seq2
+ATGCTAGTAGCTAGC
+&gt;seq3
+ATGCTAGCTAGC
+&gt;seq4
+ATGCGCTAGCTAGC
+&gt;seq5
+ATGCTAGCTAGCTAGCT</textarea>
+<p>Pasted text takes precedence over an uploaded file.</p>
+<button id="run">Run Kalign</button><p id="status" role="status"></p>
+<h2>Aligned FASTA</h2><p id="validation"></p><textarea id="alignment" rows="12" readonly></textarea>
+<p><a id="download" download="kalign-aligned.fasta" hidden>Download aligned FASTA</a></p>
+<h2>Run log</h2><pre id="log"></pre>
+<script src="https://biowasm.com/cdn/v3/aioli.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $=id=>document.getElementById(id);
+  let downloadUrl=null;
+  const log=t=>{$('log').textContent+=t+'\n';};
+  function parse(text){
+    let current=null;const rows=[];
+    for(const line of text.split(/\r?\n/)){
+      if(line.startsWith('>')){current={name:line.slice(1).trim(),seq:''};rows.push(current);}
+      else if(line.trim()){if(!current)return null;current.seq+=line.trim();}
+    }
+    return rows.length>=2&&rows.every(x=>x.name&&x.seq)?rows:null;
+  }
+  $('run').onclick=async()=>{
+    $('run').disabled=true;$('log').textContent='';$('alignment').value='';$('validation').textContent='';$('status').className='';$('download').hidden=true;
+    try{
+      const pasted=$('fasta').value.trim(),file=$('file').files[0];
+      const input=pasted||(file?await file.text():'');
+      const original=parse(input);if(!original)throw Error('Provide at least two FASTA sequences.');
+      if(typeof Aioli==='undefined')throw Error('Aioli library could not be loaded.');
+      $('status').textContent='Loading Kalign WASM…';
+      const cli=await new Aioli(['kalign/3.3.1'],{printInterleaved:false});
+      const cwd=await cli.pwd();
+      await cli.mount([{name:'input.fasta',data:input+'\n'}]);
+      const inPath=cwd.replace(/\/$/,'')+'/input.fasta';
+      const outPath=cwd.replace(/\/$/,'')+'/aligned.fasta';
+      const args=['-i',inPath,'-o',outPath,'--format','fasta'];
+      log('Command: kalign '+args.join(' '));$('status').textContent='Aligning…';
+      const result=await cli.exec('kalign',args);
+      log('stdout:\n'+(typeof result==='string'?result:(result?.stdout||'')));
+      log('stderr:\n'+(typeof result==='string'?'':(result?.stderr||'')));
+      const fileUrl=await cli.download(outPath);
+      const output=await (await fetch(fileUrl)).text();
+      const aligned=parse(output);if(!aligned)throw Error('Output was not valid FASTA.');
+      if(new Set(aligned.map(x=>x.seq.length)).size!==1)throw Error('Output sequences have unequal alignment lengths.');
+      const old=new Map(original.map(x=>[x.name,x.seq.replace(/-/g,'').toUpperCase()]));
+      const preserved=aligned.length===original.length&&aligned.every(x=>old.get(x.name)===x.seq.replace(/-/g,'').toUpperCase());
+      $('alignment').value=output;
+      $('validation').textContent=preserved?`PASS: ${aligned.length} sequences aligned to ${aligned[0].seq.length} columns; ungapped sequences preserved.`:'WARNING: unequal taxa or original sequences changed. Inspect the alignment.';
+      if(downloadUrl)URL.revokeObjectURL(downloadUrl);
+      downloadUrl=URL.createObjectURL(new Blob([output],{type:'text/plain'}));
+      $('download').href=downloadUrl;$('download').hidden=false;
+      $('status').textContent='Finished.';
+    }catch(error){$('status').className='error';$('status').textContent='Failed: '+error.message;log(error.stack||String(error));}
+    finally{$('run').disabled=false;}
+  };
+})();
+</script></body></html>

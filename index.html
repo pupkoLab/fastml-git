@@ -31,7 +31,7 @@ button:disabled{opacity:.5}.actions{display:flex;flex-wrap:wrap;gap:12px;margin:
 <div class="field"><b style="color:#b00">OR</b></div>
 <div class="field"><label for="tree-file"><b>Upload phylogenetic tree file</b> (Newick format only)</label><input type="file" id="tree-file" accept=".tree,.tre,.nwk,.txt"></div>
 <div class="field"><h2>Model of substitution:</h2><select id="model" aria-label="Substitution model"></select></div>
-<div class="actions"><button id="submit-button" type="submit">RUN</button><button id="download-node-launcher" type="button">Download Node Launcher</button><button type="reset">Clear</button><button id="load-aa-example" type="button">Load Amino Acid Example</button></div>
+<div class="actions"><button id="submit-button" type="submit">RUN</button><button type="reset">Clear</button><button id="load-aa-example" type="button">Load Amino Acid Example</button><button id="download-node-launcher" type="button">Download Node Launcher</button></div>
 <p class="hint">Node launcher: includes inputs and WebAssembly modules. Requires Node.js 18+; unaligned inputs also require Kalign installed on your computer.</p>
 <p id="progress" class="hint" role="status"></p><p id="error" class="error" role="alert"></p>
 <section class="advanced"><h2><u>Advanced options</u></h2>

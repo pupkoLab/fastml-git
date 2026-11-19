@@ -12,13 +12,22 @@ textarea{display:block;width:100%;font:14px/1.4 Consolas,monospace;padding:8px}i
 input,select,button{font:inherit}.choices{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0}.hint{font-size:12px;color:#666}
 h2{font-size:20px;margin-top:28px}.advanced{border-top:1px solid #ccc;margin-top:30px}.option{margin:13px 0}
 button{padding:7px 20px;background:#e4efff;color:#003399;border:1px solid #90abc2;font-weight:bold;cursor:pointer}
+.previous-results-section{margin:24px 0 32px;padding:18px 20px;border:1px solid #bbcbd9;border-radius:6px;background:#f5f8fc}
+.previous-results-section h2{margin:0 0 6px;font-size:19px;color:#003399}
+.previous-results-section .hint{margin:0 0 12px}
+.previous-results-section #import-status{margin:10px 0 0}
 button:disabled{opacity:.5}.actions{display:flex;flex-wrap:wrap;gap:12px;margin:20px 0}.error{color:#a71919;white-space:pre-wrap;font-weight:bold}
 @media(max-width:630px){.logo{width:90px;max-height:75px}.brand{gap:12px}h1{font-size:31px}.subtitle{font-size:16px}header,main{padding-left:14px;padding-right:14px}}
 </style></head><body>
 <header><div class="brand"><img class="logo" src="FastML_logo.jpg" alt="FastML logo"><div><h1>The FASTML Server</h1><div class="subtitle">Server for computing Maximum Likelihood<br>ancestral sequence reconstruction</div></div></div>
 <nav><a href="index.html">HOME</a><a href="https://fastml.tau.ac.il/">ORIGINAL FASTML SERVER</a></nav></header>
 <main><p class="hint">Browser version: calculations run locally using WebAssembly.</p>
-<div class="field"><label for="previous-results"><b>Upload previous results</b> (FastML results ZIP)</label><input id="previous-results" type="file" accept=".zip,application/zip"><p id="import-status" class="hint" role="status"></p></div>
+<section class="previous-results-section" aria-labelledby="previous-results-heading">
+<h2 id="previous-results-heading">Upload previous results</h2>
+<p class="hint">Open a previously downloaded FastML results ZIP to view the results.</p>
+<input id="previous-results" type="file" accept=".zip,application/zip" aria-label="Select FastML results ZIP">
+<p id="import-status" class="hint" role="status"></p>
+</section>
 <form id="fastml-form">
 <div class="field"><label for="msa-text"><b>Type sequences here</b> (FASTA format only)</label><textarea id="msa-text" rows="6"></textarea></div>
 <div class="field"><label for="msa-file"><b>Or upload file</b></label><input id="msa-file" type="file" accept=".fa,.fas,.fasta,.txt"></div>
@@ -69,7 +78,7 @@ NS------TWHTNKT----------------KGLNDTGINGT--II-LPCRIKQIAILRLEVGKAMYAPPPIKQQRCESY
 >AB287368.B
 NS------SWYENGS-SIWY------------SINNTTEN----IT-LPCRIKQIINMWQGVGKAMYAPPIAGQIKCSSNITGLLLTRDGGGDGNND------S-----EIFRPEGGNMK`;
   const aminoAcidTree = '(DQ056417.C:0.385001676320433,(AY901967.C:0.439181229824069,(AB287368.B:0.350054934966739,(DQ886037.B:0.382948002552644,(EF514699.B:0.409102812594311,DQ358805.B:0.405844325566786):0.00873314505308399):0.0327495987899325):0.424904820901794):0.0114267685208704);';
-  const models = {aa:[['JTT','JTT (default)'],['LG','LG'],['cpREV','cpREV'],['WAG','WAG'],['Dayhoff','Dayhoff'],['mtREV', 'mtREV']],nuc:[['JC_Nuc','JC69 (default)'],codon:[['empiriCodon','Empirical codon (default)']]};
+  const models = {aa:[['JTT','JTT (default)'],['LG','LG'],['cpREV','cpREV'],['WAG','WAG'],['Dayhoff','Dayhoff'],['mtREV', 'mtREV']],nuc:[['JC_Nuc','JC69 (default)']],codon:[['empiriCodon','Empirical codon (default)']]};
   function updateModels(){const type=document.querySelector('[name="seq-type"]:checked').value;$('model').replaceChildren(...models[type].map(([value,label])=>new Option(label,value)));}
   function updateGamma(){const enabled=$('gamma').checked;$('gamma-options').hidden=!enabled;$('alpha-value').disabled=!enabled||document.querySelector('[name="alpha-mode"]:checked').value!=='user';}
   document.querySelectorAll('[name="seq-type"]').forEach(x=>x.addEventListener('change',updateModels));
